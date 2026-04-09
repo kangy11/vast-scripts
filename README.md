@@ -14,6 +14,7 @@ This repository turns a Vast.ai ComfyUI SSH instance into a reproducible setup t
 - Installs `tmux` but never auto-starts or auto-attaches to it
 - Exposes helper commands: `start-comfy`, `logs-comfy`, `attach-comfy`, `bootstrap-rerun`
 - Detects the official Vast ComfyUI image and avoids auto-starting a second ComfyUI process on top of the built-in supervisor
+- Starts a fallback ComfyUI on internal port `18188` if the official Vast path is unavailable
 
 ## Repository layout
 
@@ -53,9 +54,10 @@ This repository turns a Vast.ai ComfyUI SSH instance into a reproducible setup t
 - `COMFYUI_REPO`: defaults to `https://github.com/comfyanonymous/ComfyUI.git`
 - `COMFYUI_REF`: optional git ref for ComfyUI itself
 - `HF_TOKEN`: optional but required for private Hugging Face repositories
-- `COMFYUI_PORT`: defaults to `8188`
+- `COMFYUI_PORT`: defaults to `18188` on official Vast images and `8188` elsewhere
 - `COMFYUI_ARGS`: extra arguments passed to `python main.py`
 - `AUTO_START_COMFYUI`: defaults to `0` on official Vast images and `1` elsewhere
+- `OFFICIAL_COMFYUI_FALLBACK`: defaults to `1` and starts ComfyUI on the official internal port when the supervisor path is unavailable
 - `COMFYUI_LOG_FILE`: optional override for `logs-comfy`; defaults to `/var/log/portal/comfyui.log` on official Vast images
 - `WEB_USERNAME`: Vast portal basic-auth username, defaults to `vastai` if omitted
 - `WEB_PASSWORD`: Vast portal auth password/token; set this explicitly to avoid random generated tokens
@@ -64,5 +66,6 @@ This repository turns a Vast.ai ComfyUI SSH instance into a reproducible setup t
 
 - Vast local volumes can still be used as a same-host cache optimization, but the bootstrap flow does not depend on them.
 - On official Vast ComfyUI SSH images, let the built-in supervisor own the main web process. This bootstrap should restore the environment, not launch a duplicate service.
+- The Vast `on-start` script should launch bootstrap in the background so the official portal and open buttons can come up immediately.
 - `config/comfyui-config.tar.zst` is intentionally not committed here because it is user-specific. Generate it from your live ComfyUI install with `bin/package-comfy-config`.
 - This repository is safe to rerun. Existing matching clones and model downloads are reused.

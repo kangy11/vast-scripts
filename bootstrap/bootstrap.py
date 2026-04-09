@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -387,12 +388,24 @@ def pid_running(pid_file: Path) -> bool:
 
 def build_comfy_command(env_info: dict[str, Any]) -> list[str]:
     host = os.environ.get("COMFYUI_HOST", "0.0.0.0")
-    port = os.environ.get("COMFYUI_PORT", "8188")
+    default_port = "18188" if env_info["official_image"] else "8188"
+    port = os.environ.get("COMFYUI_PORT", default_port)
     extra_args = os.environ.get("COMFYUI_ARGS", "").strip()
     command = [env_info["runtime_python"], "main.py", "--listen", host, "--port", port]
     if extra_args:
         command.extend(extra_args.split())
     return command
+
+
+def comfy_target_port(env_info: dict[str, Any]) -> int:
+    default_port = "18188" if env_info["official_image"] else "8188"
+    return int(os.environ.get("COMFYUI_PORT", default_port))
+
+
+def tcp_port_open(port: int, host: str = "127.0.0.1") -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.5)
+        return sock.connect_ex((host, port)) == 0
 
 
 def start_comfy(env_info: dict[str, Any], *, tmux: bool, foreground: bool) -> None:
@@ -478,14 +491,23 @@ def bootstrap_all(repo_root: Path) -> None:
     sync_models(env_info)
     restore_comfy_config(env_info)
     auto_start_comfy = os.environ.get("AUTO_START_COMFYUI")
-    should_start = auto_start_comfy == "1"
-    if auto_start_comfy is None and not env_info["official_image"]:
+    should_start = False
+    target_port = comfy_target_port(env_info)
+    if env_info["official_image"]:
+        if tcp_port_open(target_port):
+            log(f"Official ComfyUI port {target_port} is already reachable; skipping bootstrap start")
+        elif os.environ.get("OFFICIAL_COMFYUI_FALLBACK", "1") != "0":
+            should_start = True
+            log(
+                f"Official ComfyUI port {target_port} is not reachable; starting fallback ComfyUI"
+            )
+    elif auto_start_comfy != "0":
         should_start = True
     if should_start:
         start_comfy(env_info, tmux=False, foreground=False)
     else:
         if env_info["official_image"]:
-            log("Skipping automatic ComfyUI start because the official Vast supervisor manages it")
+            log("Skipping automatic ComfyUI start because the official Vast path is disabled or already healthy")
         else:
             log("Skipping automatic ComfyUI start because AUTO_START_COMFYUI is not enabled")
     (env_info["state_dir"] / "bootstrap.complete").write_text("ok\n", encoding="utf-8")

@@ -22,4 +22,5 @@ fi
 chmod +x "$BOOTSTRAP_ROOT/bootstrap.sh"
 find "$BOOTSTRAP_ROOT/bin" -maxdepth 1 -type f -exec chmod +x {} \;
 
-bash "$BOOTSTRAP_ROOT/bootstrap.sh"
+nohup bash "$BOOTSTRAP_ROOT/bootstrap.sh" >/dev/null 2>&1 &
+echo "bootstrap launched in background; logs: $BOOTSTRAP_ROOT/bootstrap.log"
