@@ -78,6 +78,21 @@ def load_yaml(path: Path) -> Any:
     return data
 
 
+def requirement_name(line: str) -> str | None:
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#"):
+        return None
+    if stripped.startswith(("-", "--", "git+", "http://", "https://")):
+        return None
+    base = stripped.split(";", 1)[0].strip()
+    if "@" in base:
+        base = base.split("@", 1)[0].strip()
+    match = re.match(r"([A-Za-z0-9_.-]+)", base)
+    if not match:
+        return None
+    return match.group(1).lower().replace("_", "-")
+
+
 def ensure_dirs(paths: list[Path]) -> None:
     for path in paths:
         path.mkdir(parents=True, exist_ok=True)
@@ -90,6 +105,32 @@ def write_if_changed(path: Path, content: str, mode: int | None = None) -> None:
     path.write_text(content, encoding="utf-8")
     if mode is not None:
         path.chmod(mode)
+
+
+def install_requirements(
+    python_bin: str,
+    req_path: Path,
+    excluded_packages: list[str] | None = None,
+) -> None:
+    excluded = {item.strip().lower().replace("_", "-") for item in (excluded_packages or []) if item.strip()}
+    install_path = req_path
+    temp_path: Path | None = None
+    if excluded:
+        kept_lines: list[str] = []
+        for line in req_path.read_text(encoding="utf-8").splitlines():
+            package = requirement_name(line)
+            if package and package in excluded:
+                log(f"Filtering requirement '{package}' from {req_path.name}")
+                continue
+            kept_lines.append(line)
+        temp_path = req_path.with_name(f".filtered-{req_path.name}")
+        temp_path.write_text("\n".join(kept_lines).rstrip() + "\n", encoding="utf-8")
+        install_path = temp_path
+    try:
+        run([python_bin, "-m", "pip", "install", "-r", str(install_path)])
+    finally:
+        if temp_path and temp_path.exists():
+            temp_path.unlink()
 
 
 def bootstrap_env(repo_root: Path) -> dict[str, Any]:
@@ -258,23 +299,35 @@ def install_custom_nodes(env_info: dict[str, Any]) -> None:
         repo = node["repo"]
         commit = node.get("commit")
         path = custom_root / node.get("path", name)
-        if (path / ".git").exists():
-            run(["git", "fetch", "--all", "--tags"], cwd=path)
-        elif path.exists() and any(path.iterdir()):
-            log(f"Custom node path {path} already exists and is not a git repo; skipping clone")
-        else:
-            run(["git", "clone", repo, str(path)])
-        if commit and str(commit).lower() != "null" and (path / ".git").exists():
-            run(["git", "checkout", commit], cwd=path)
+        optional = bool(node.get("optional", False))
+        requirement_excludes = node.get("requirements_exclude") or []
+        try:
+            if (path / ".git").exists():
+                run(["git", "fetch", "--all", "--tags"], cwd=path)
+            elif path.exists() and any(path.iterdir()):
+                log(f"Custom node path {path} already exists and is not a git repo; skipping clone")
+            else:
+                run(["git", "clone", repo, str(path)])
+            if commit and str(commit).lower() != "null" and (path / ".git").exists():
+                run(["git", "checkout", commit], cwd=path)
 
-        requirements = node.get("requirements")
-        if requirements:
-            req_path = path / requirements
-            if req_path.exists():
-                run([env_info["runtime_python"], "-m", "pip", "install", "-r", str(req_path)])
+            requirements = node.get("requirements")
+            if requirements:
+                req_path = path / requirements
+                if req_path.exists():
+                    install_requirements(
+                        env_info["runtime_python"],
+                        req_path,
+                        excluded_packages=requirement_excludes,
+                    )
 
-        for install_cmd in node.get("install", []) or []:
-            run(["bash", "-lc", install_cmd], cwd=path)
+            for install_cmd in node.get("install", []) or []:
+                run(["bash", "-lc", install_cmd], cwd=path)
+        except subprocess.CalledProcessError as exc:
+            if optional:
+                log(f"Skipping optional node {name} after failure: {exc}")
+                continue
+            raise
 
 
 def sync_models(env_info: dict[str, Any]) -> None:

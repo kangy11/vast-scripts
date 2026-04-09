@@ -40,12 +40,15 @@
   commit: 4ffb643cbfdd228fa47ff737aa9a3708b3eadaa1
   path: ComfyUI-QuantOps
   requirements: requirements.txt
+  requirements_exclude:
+    - triton
   install: []
 - name: ComfyUI-UmeAiRT-Toolkit
   repo: https://github.com/UmeAiRT/ComfyUI-UmeAiRT-Toolkit
   commit: null
   path: ComfyUI-UmeAiRT-Toolkit
   requirements: null
+  optional: true
   install: []
 - name: ComfyUI-Zlycoris
   repo: https://github.com/TripleHeadedMonkey/ComfyUI-Zlycoris
