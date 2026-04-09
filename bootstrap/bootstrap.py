@@ -16,6 +16,8 @@ from huggingface_hub import snapshot_download
 
 
 ROOT_USER = os.environ.get("BOOTSTRAP_USER", "root")
+OFFICIAL_COMFY_SUPERVISOR = Path("/opt/supervisor-scripts/comfyui.sh")
+OFFICIAL_COMFY_LOG = Path("/var/log/portal/comfyui.log")
 TMUX_PATTERNS = (
     re.compile(r"tmux\s+attach"),
     re.compile(r"tmux\s+new"),
@@ -97,9 +99,11 @@ def bootstrap_env(repo_root: Path) -> dict[str, Any]:
     hf_home = getenv_path("HF_HOME", str(workspace_root / ".cache" / "huggingface"))
     hf_hub_cache = getenv_path("HF_HUB_CACHE", str(hf_home / "hub"))
     log_dir = getenv_path("LOG_DIR", str(workspace_root / "logs"))
-    comfy_log = Path(os.environ.get("COMFYUI_LOG_FILE", str(log_dir / "comfyui.log")))
+    comfy_log_default = OFFICIAL_COMFY_LOG if OFFICIAL_COMFY_LOG.exists() else log_dir / "comfyui.log"
+    comfy_log = Path(os.environ.get("COMFYUI_LOG_FILE", str(comfy_log_default)))
     pid_file = Path(os.environ.get("COMFYUI_PID_FILE", str(log_dir / "comfyui.pid")))
     state_dir = workspace_root / ".bootstrap-state"
+    runtime_python = resolve_runtime_python()
     return {
         "repo_root": repo_root,
         "workspace_root": workspace_root,
@@ -113,7 +117,21 @@ def bootstrap_env(repo_root: Path) -> dict[str, Any]:
         "state_dir": state_dir,
         "config_dir": repo_root / "config",
         "bin_dir": repo_root / "bin",
+        "runtime_python": runtime_python,
+        "official_image": OFFICIAL_COMFY_SUPERVISOR.exists(),
     }
+
+
+def resolve_runtime_python() -> str:
+    candidates = [
+        os.environ.get("COMFYUI_PYTHON", "").strip(),
+        "/venv/main/bin/python",
+        sys.executable,
+    ]
+    for candidate in candidates:
+        if candidate and Path(candidate).exists():
+            return candidate
+    return sys.executable
 
 
 def profile_exports(env_info: dict[str, Any]) -> str:
@@ -170,7 +188,7 @@ def ensure_comfyui_repo(env_info: dict[str, Any]) -> None:
         run(["git", "checkout", repo_ref], cwd=target)
     requirements = target / "requirements.txt"
     if requirements.exists():
-        run([sys.executable, "-m", "pip", "install", "-r", str(requirements)])
+        run([env_info["runtime_python"], "-m", "pip", "install", "-r", str(requirements)])
 
 
 def install_system_packages(env_info: dict[str, Any]) -> None:
@@ -253,7 +271,7 @@ def install_custom_nodes(env_info: dict[str, Any]) -> None:
         if requirements:
             req_path = path / requirements
             if req_path.exists():
-                run([sys.executable, "-m", "pip", "install", "-r", str(req_path)])
+                run([env_info["runtime_python"], "-m", "pip", "install", "-r", str(req_path)])
 
         for install_cmd in node.get("install", []) or []:
             run(["bash", "-lc", install_cmd], cwd=path)
@@ -318,7 +336,7 @@ def build_comfy_command(env_info: dict[str, Any]) -> list[str]:
     host = os.environ.get("COMFYUI_HOST", "0.0.0.0")
     port = os.environ.get("COMFYUI_PORT", "8188")
     extra_args = os.environ.get("COMFYUI_ARGS", "").strip()
-    command = [sys.executable, "main.py", "--listen", host, "--port", port]
+    command = [env_info["runtime_python"], "main.py", "--listen", host, "--port", port]
     if extra_args:
         command.extend(extra_args.split())
     return command
@@ -406,7 +424,17 @@ def bootstrap_all(repo_root: Path) -> None:
     install_custom_nodes(env_info)
     sync_models(env_info)
     restore_comfy_config(env_info)
-    start_comfy(env_info, tmux=False, foreground=False)
+    auto_start_comfy = os.environ.get("AUTO_START_COMFYUI")
+    should_start = auto_start_comfy == "1"
+    if auto_start_comfy is None and not env_info["official_image"]:
+        should_start = True
+    if should_start:
+        start_comfy(env_info, tmux=False, foreground=False)
+    else:
+        if env_info["official_image"]:
+            log("Skipping automatic ComfyUI start because the official Vast supervisor manages it")
+        else:
+            log("Skipping automatic ComfyUI start because AUTO_START_COMFYUI is not enabled")
     (env_info["state_dir"] / "bootstrap.complete").write_text("ok\n", encoding="utf-8")
     log("Bootstrap completed successfully")
 

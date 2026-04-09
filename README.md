@@ -6,13 +6,14 @@ This repository turns a Vast.ai ComfyUI SSH instance into a reproducible setup t
 
 - Bootstraps an official-style ComfyUI SSH instance from a Vast `on-start` script
 - Clones or updates the main ComfyUI repository
-- Installs pinned Python and system dependencies
+- Installs pinned Python and system dependencies into the active ComfyUI runtime
 - Installs pinned custom nodes from `config/custom-nodes.lock.yaml`
 - Downloads pinned models from Hugging Face using `config/models.lock.yaml`
 - Restores small ComfyUI user config from a local archive or include list
 - Sets the default shell to `zsh` with `oh-my-zsh`
 - Installs `tmux` but never auto-starts or auto-attaches to it
 - Exposes helper commands: `start-comfy`, `logs-comfy`, `attach-comfy`, `bootstrap-rerun`
+- Detects the official Vast ComfyUI image and avoids auto-starting a second ComfyUI process on top of the built-in supervisor
 
 ## Repository layout
 
@@ -54,9 +55,14 @@ This repository turns a Vast.ai ComfyUI SSH instance into a reproducible setup t
 - `HF_TOKEN`: optional but required for private Hugging Face repositories
 - `COMFYUI_PORT`: defaults to `8188`
 - `COMFYUI_ARGS`: extra arguments passed to `python main.py`
+- `AUTO_START_COMFYUI`: defaults to `0` on official Vast images and `1` elsewhere
+- `COMFYUI_LOG_FILE`: optional override for `logs-comfy`; defaults to `/var/log/portal/comfyui.log` on official Vast images
+- `WEB_USERNAME`: Vast portal basic-auth username, defaults to `vastai` if omitted
+- `WEB_PASSWORD`: Vast portal auth password/token; set this explicitly to avoid random generated tokens
 
 ## Notes
 
 - Vast local volumes can still be used as a same-host cache optimization, but the bootstrap flow does not depend on them.
+- On official Vast ComfyUI SSH images, let the built-in supervisor own the main web process. This bootstrap should restore the environment, not launch a duplicate service.
 - `config/comfyui-config.tar.zst` is intentionally not committed here because it is user-specific. Generate it from your live ComfyUI install with `bin/package-comfy-config`.
 - This repository is safe to rerun. Existing matching clones and model downloads are reused.
