@@ -24,6 +24,25 @@ HF_TOKEN_ENV_NAMES = (
     "HUGGING_FACE_HUB_TOKEN",
     "HUGGINGFACEHUB_API_TOKEN",
 )
+PORTAL_ENV_NAMES = (
+    "WORKSPACE",
+    "PORTAL_CONFIG",
+    "WEB_USERNAME",
+    "WEB_PASSWORD",
+    "OPEN_BUTTON_TOKEN",
+    "ENABLE_AUTH",
+    "ENABLE_HTTPS",
+    "AUTH_EXCLUDE",
+    "PUBLIC_IPADDR",
+    "VAST_CONTAINERLABEL",
+    "VAST_TCP_PORT_1111",
+    "VAST_TCP_PORT_8188",
+    "VAST_TCP_PORT_8288",
+    "VAST_TCP_PORT_8384",
+    "VAST_TCP_PORT_8080",
+    "COMFYUI_ARGS",
+    "COMFYUI_PORT",
+)
 TMUX_PATTERNS = (
     re.compile(r"tmux\s+attach"),
     re.compile(r"tmux\s+new"),
@@ -139,12 +158,25 @@ def install_requirements(
             temp_path.unlink()
 
 
+def default_portal_config() -> str:
+    return (
+        "localhost:1111:11111:/:Instance Portal|"
+        "localhost:8188:18188:/:ComfyUI|"
+        "localhost:8288:18288:/docs:API Wrapper|"
+        "localhost:8384:18384:/:Syncthing"
+    )
+
+
 def resolve_hf_token() -> str:
     for name in HF_TOKEN_ENV_NAMES:
         value = os.environ.get(name, "").strip()
         if value:
             return value
     return ""
+
+
+def shell_quote(value: str) -> str:
+    return "'" + value.replace("'", "'\"'\"'") + "'"
 
 
 def prepare_hf_auth() -> str:
@@ -159,6 +191,66 @@ def prepare_hf_auth() -> str:
     except Exception as exc:
         log(f"Hugging Face login step failed, continuing with direct token auth: {exc}")
     return token
+
+
+def prepare_portal_env(env_info: dict[str, Any]) -> None:
+    os.environ.setdefault("WORKSPACE", str(env_info["workspace_root"]))
+    if env_info["official_image"]:
+        os.environ.setdefault("PORTAL_CONFIG", default_portal_config())
+
+
+def persist_official_env(env_info: dict[str, Any]) -> None:
+    env_lines: list[str] = []
+    for name in PORTAL_ENV_NAMES + HF_TOKEN_ENV_NAMES:
+        value = os.environ.get(name, "").strip()
+        if value:
+            env_lines.append(f"export {name}={shell_quote(value)}")
+    if not env_lines:
+        return
+    env_file = env_info["workspace_root"] / ".env"
+    write_if_changed(env_file, "\n".join(env_lines) + "\n", 0o600)
+
+    etc_environment = Path("/etc/environment")
+    try:
+        existing = etc_environment.read_text(encoding="utf-8") if etc_environment.exists() else ""
+        filtered = []
+        managed_names = set(PORTAL_ENV_NAMES + HF_TOKEN_ENV_NAMES)
+        for line in existing.splitlines():
+            key = line.split("=", 1)[0].strip()
+            if key in managed_names:
+                continue
+            filtered.append(line)
+        filtered.extend([line.replace("export ", "", 1) for line in env_lines])
+        write_if_changed(etc_environment, "\n".join(filtered).rstrip() + "\n", 0o644)
+    except PermissionError:
+        log("Skipping /etc/environment update because permissions are insufficient")
+
+
+def supervisord_running() -> bool:
+    socket_path = Path("/var/run/supervisor.sock")
+    pid_path = Path("/var/run/supervisord.pid")
+    if socket_path.exists():
+        return True
+    if pid_path.exists():
+        try:
+            pid = int(pid_path.read_text(encoding="utf-8").strip())
+            os.kill(pid, 0)
+            return True
+        except (ValueError, OSError):
+            return False
+    return False
+
+
+def ensure_supervisord(env_info: dict[str, Any]) -> None:
+    if not env_info["official_image"]:
+        return
+    if supervisord_running():
+        return
+    if shutil.which("supervisord") is None:
+        log("supervisord is unavailable; skipping official portal startup")
+        return
+    log("Starting supervisord for official Vast portal stack")
+    run(["supervisord", "-c", "/etc/supervisor/supervisord.conf"], check=False)
 
 
 def bootstrap_env(repo_root: Path) -> dict[str, Any]:
@@ -511,11 +603,14 @@ def bootstrap_all(repo_root: Path) -> None:
             env_info["state_dir"],
         ]
     )
+    prepare_portal_env(env_info)
     prepare_hf_auth()
+    persist_official_env(env_info)
     persist_profile_env(env_info)
     install_system_packages(env_info)
     install_shell(env_info)
     ensure_comfyui_repo(env_info)
+    ensure_supervisord(env_info)
     install_custom_nodes(env_info)
     sync_models(env_info)
     restore_comfy_config(env_info)

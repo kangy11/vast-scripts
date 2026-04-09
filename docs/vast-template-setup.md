@@ -31,6 +31,8 @@ COMFYUI_LOG_FILE=/var/log/portal/comfyui.log
 
 That lets the bootstrap restore nodes, models, shell config, and user config without blindly launching a second ComfyUI process. If the official image fails to expose internal port `18188`, bootstrap now starts a fallback ComfyUI on that same internal port.
 
+Bootstrap also persists portal-related environment into `/workspace/.env` and `/etc/environment`, then starts `supervisord` if the official portal stack is missing. That is important because the official Vast helper scripts read their settings from those files, not from your later SSH shell.
+
 For a stable ComfyUI web login through the Vast portal, explicitly set:
 
 ```bash
