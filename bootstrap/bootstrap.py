@@ -13,12 +13,17 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from huggingface_hub import snapshot_download
+from huggingface_hub import login, snapshot_download
 
 
 ROOT_USER = os.environ.get("BOOTSTRAP_USER", "root")
 OFFICIAL_COMFY_SUPERVISOR = Path("/opt/supervisor-scripts/comfyui.sh")
 OFFICIAL_COMFY_LOG = Path("/var/log/portal/comfyui.log")
+HF_TOKEN_ENV_NAMES = (
+    "HF_TOKEN",
+    "HUGGING_FACE_HUB_TOKEN",
+    "HUGGINGFACEHUB_API_TOKEN",
+)
 TMUX_PATTERNS = (
     re.compile(r"tmux\s+attach"),
     re.compile(r"tmux\s+new"),
@@ -132,6 +137,28 @@ def install_requirements(
     finally:
         if temp_path and temp_path.exists():
             temp_path.unlink()
+
+
+def resolve_hf_token() -> str:
+    for name in HF_TOKEN_ENV_NAMES:
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    return ""
+
+
+def prepare_hf_auth() -> str:
+    token = resolve_hf_token()
+    if not token:
+        return ""
+    for name in HF_TOKEN_ENV_NAMES:
+        os.environ[name] = token
+    try:
+        login(token=token, add_to_git_credential=False, skip_if_logged_in=False)
+        log("Hugging Face authentication prepared")
+    except Exception as exc:
+        log(f"Hugging Face login step failed, continuing with direct token auth: {exc}")
+    return token
 
 
 def bootstrap_env(repo_root: Path) -> dict[str, Any]:
@@ -332,11 +359,12 @@ def install_custom_nodes(env_info: dict[str, Any]) -> None:
 
 
 def sync_models(env_info: dict[str, Any]) -> None:
+    hf_token = resolve_hf_token()
     models = load_yaml(env_info["config_dir"] / "models.lock.yaml")
     for model in models:
-        if model.get("private") and not os.environ.get("HF_TOKEN"):
+        if model.get("private") and not hf_token:
             raise RuntimeError(
-                f"Model {model['name']} is marked private but HF_TOKEN is not set"
+                f"Model {model['name']} is marked private but no Hugging Face token was found"
             )
         target_dir = Path(model["target_dir"])
         if not target_dir.is_absolute():
@@ -349,7 +377,7 @@ def sync_models(env_info: dict[str, Any]) -> None:
             local_dir=str(target_dir),
             allow_patterns=model.get("include") or None,
             ignore_patterns=model.get("exclude") or None,
-            token=os.environ.get("HF_TOKEN"),
+            token=hf_token or None,
             resume_download=True,
         )
 
@@ -483,6 +511,7 @@ def bootstrap_all(repo_root: Path) -> None:
             env_info["state_dir"],
         ]
     )
+    prepare_hf_auth()
     persist_profile_env(env_info)
     install_system_packages(env_info)
     install_shell(env_info)
