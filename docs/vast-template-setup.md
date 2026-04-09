@@ -24,12 +24,12 @@ For the official Vast ComfyUI image, keep:
 
 ```bash
 AUTO_START_COMFYUI=0
-OFFICIAL_COMFYUI_FALLBACK=1
+OFFICIAL_COMFYUI_FALLBACK=0
 COMFYUI_PORT=18188
 COMFYUI_LOG_FILE=/var/log/portal/comfyui.log
 ```
 
-That lets the bootstrap restore nodes, models, shell config, and user config without blindly launching a second ComfyUI process. If the official image fails to expose internal port `18188`, bootstrap now starts a fallback ComfyUI on that same internal port.
+That keeps the official Vast ComfyUI and official management page as the primary path. Bootstrap restores nodes, models, shell config, and user config, but does not spin up a second ComfyUI unless you explicitly choose to use the manual fallback.
 
 Bootstrap also persists portal-related environment into `/workspace/.env` and `/etc/environment`, then starts `supervisord` if the official portal stack is missing. That is important because the official Vast helper scripts read their settings from those files, not from your later SSH shell.
 
@@ -48,7 +48,7 @@ If you omit `WEB_PASSWORD`, the portal may auto-generate a token, which is harde
 - The default shell is changed to `zsh` when possible
 - `tmux` stays installed but is never auto-started
 - `attach-comfy` only matters if you manually start ComfyUI with `start-comfy --tmux`
-- On official Vast images, `start-comfy` is a manual fallback tool, not part of the default boot flow
+- On official Vast images, `start-comfy` is only an emergency/manual fallback tool, not part of the default boot flow
 
 ## Logs
 

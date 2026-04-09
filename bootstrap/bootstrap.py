@@ -620,10 +620,14 @@ def bootstrap_all(repo_root: Path) -> None:
     if env_info["official_image"]:
         if tcp_port_open(target_port):
             log(f"Official ComfyUI port {target_port} is already reachable; skipping bootstrap start")
-        elif os.environ.get("OFFICIAL_COMFYUI_FALLBACK", "1") != "0":
+        elif os.environ.get("OFFICIAL_COMFYUI_FALLBACK", "0") == "1":
             should_start = True
             log(
-                f"Official ComfyUI port {target_port} is not reachable; starting fallback ComfyUI"
+                f"Official ComfyUI port {target_port} is not reachable; starting manual fallback ComfyUI"
+            )
+        else:
+            log(
+                f"Official ComfyUI port {target_port} is not reachable; leaving startup to the official stack"
             )
     elif auto_start_comfy != "0":
         should_start = True
