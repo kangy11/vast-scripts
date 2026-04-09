@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+COMFYUI_ROOT="${COMFYUI_ROOT:-/workspace/ComfyUI}"
+INCLUDE_FILE="${INCLUDE_FILE:-$REPO_ROOT/config/comfyui-config.include}"
+OUTPUT_FILE="${OUTPUT_FILE:-$REPO_ROOT/config/comfyui-config.tar.zst}"
+
+if [[ ! -d "$COMFYUI_ROOT" ]]; then
+  echo "ComfyUI root does not exist: $COMFYUI_ROOT" >&2
+  exit 1
+fi
+
+if [[ ! -f "$INCLUDE_FILE" ]]; then
+  echo "Include file does not exist: $INCLUDE_FILE" >&2
+  exit 1
+fi
+
+tar --zstd -cf "$OUTPUT_FILE" -C "$COMFYUI_ROOT" -T "$INCLUDE_FILE"
+echo "Wrote $OUTPUT_FILE"

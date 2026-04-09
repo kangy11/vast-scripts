@@ -1,0 +1,9 @@
+.DS_Store
+.venv/
+.bootstrap-venv/
+.uv-cache/
+.uv-python/
+.hf-home/
+logs/
+*.log
+__pycache__/

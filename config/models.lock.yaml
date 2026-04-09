@@ -1,0 +1,137 @@
+# Public and private model mappings discovered from the live Vast instance.
+# The private repo `wykang/comfyui-private-models` stores files under ComfyUI-relative paths.
+
+- name: anima-preview3-base
+  repo_id: circlestone-labs/Anima
+  revision: main
+  target_dir: models/diffusion_models
+  include:
+    - "split_files/diffusion_models/anima-preview3-base.safetensors"
+  exclude: []
+  private: false
+
+- name: anima-qwen-text-encoder
+  repo_id: circlestone-labs/Anima
+  revision: main
+  target_dir: models/clip
+  include:
+    - "split_files/text_encoders/qwen_3_06b_base.safetensors"
+  exclude: []
+  private: false
+
+- name: qwen-image-vae
+  repo_id: Comfy-Org/Qwen-Image_ComfyUI
+  revision: main
+  target_dir: models/vae
+  include:
+    - "split_files/vae/qwen_image_vae.safetensors"
+  exclude: []
+  private: false
+
+- name: flan-t5-xxl-q8-gguf
+  repo_id: silveroxides/flan-t5-xxl-encoder-only-GGUF
+  revision: main
+  target_dir: models/clip
+  include:
+    - "flan-t5-xxl-Q8_0.gguf"
+  exclude: []
+  private: false
+
+- name: z-image-ae
+  repo_id: morikomorizz/Z-Image-AIO
+  revision: main
+  target_dir: models/vae
+  include:
+    - "ae.safetensors"
+  exclude: []
+  private: false
+
+- name: photonicfusion-chroma-v10
+  repo_id: wykang/comfyui-private-models
+  revision: main
+  target_dir: .
+  include:
+    - "models/diffusion_models/photonicFusionChroma_v10_diffusion_learned_fp8mixed_tensor_distill_large.safetensors"
+  exclude: []
+  private: true
+
+- name: t5xxl-the-photo-x10a
+  repo_id: wykang/comfyui-private-models
+  revision: main
+  target_dir: .
+  include:
+    - "models/embeddings/t5xxl_the_photo_x10a.safetensors"
+  exclude: []
+  private: true
+
+- name: t5xxl-the-photo-x10w
+  repo_id: wykang/comfyui-private-models
+  revision: main
+  target_dir: .
+  include:
+    - "models/embeddings/t5xxl_the_photo_x10w.safetensors"
+  exclude: []
+  private: true
+
+- name: chroma1-flash-r24
+  repo_id: wykang/comfyui-private-models
+  revision: main
+  target_dir: .
+  include:
+    - "models/loras/Chroma1-Flash_r24-fp32.safetensors"
+  exclude: []
+  private: true
+
+- name: chroma-flash-heun-r01
+  repo_id: wykang/comfyui-private-models
+  revision: main
+  target_dir: .
+  include:
+    - "models/loras/chroma-flash-heun_r01-fp32-pruned.safetensors"
+  exclude: []
+  private: true
+
+- name: chroma-flash-heun-r256
+  repo_id: wykang/comfyui-private-models
+  revision: main
+  target_dir: .
+  include:
+    - "models/loras/chroma-flash-heun_r256-fp32-pruned.safetensors"
+  exclude: []
+  private: true
+
+- name: chroma-flash-heun-r96
+  repo_id: wykang/comfyui-private-models
+  revision: main
+  target_dir: .
+  include:
+    - "models/loras/chroma-flash-heun_r96-fp32.safetensors"
+  exclude: []
+  private: true
+
+- name: realpose-v1-photo-facerefine-v2-r64
+  repo_id: wykang/comfyui-private-models
+  revision: main
+  target_dir: .
+  include:
+    - "models/loras/realpose_v1_photo-facerefine-v2-r64.safetensors"
+  exclude: []
+  private: true
+
+- name: realpose-v1-photo
+  repo_id: wykang/comfyui-private-models
+  revision: main
+  target_dir: .
+  include:
+    - "models/loras/realpose_v1_photo.safetensors"
+  exclude: []
+  private: true
+
+- name: nomos8k-span-otf-medium
+  repo_id: wykang/comfyui-private-models
+  revision: main
+  target_dir: .
+  include:
+    - "models/upscale_models/4xNomos8k_span_otf_medium.pth"
+  exclude: []
+  private: true

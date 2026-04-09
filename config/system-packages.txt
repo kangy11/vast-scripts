@@ -1,0 +1,14 @@
+git
+curl
+zsh
+tmux
+ca-certificates
+build-essential
+python3-pip
+python3-venv
+python3-dev
+libglib2.0-0
+libgl1
+libgomp1
+unzip
+zstd

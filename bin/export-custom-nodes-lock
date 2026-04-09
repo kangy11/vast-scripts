@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+COMFYUI_ROOT="${COMFYUI_ROOT:-/workspace/ComfyUI}"
+OUTPUT_FILE="${OUTPUT_FILE:-$(pwd)/config/custom-nodes.generated.yaml}"
+CUSTOM_ROOT="$COMFYUI_ROOT/custom_nodes"
+
+if [[ ! -d "$CUSTOM_ROOT" ]]; then
+  echo "custom_nodes directory not found: $CUSTOM_ROOT" >&2
+  exit 1
+fi
+
+mkdir -p "$(dirname "$OUTPUT_FILE")"
+{
+  echo "# Generated from $CUSTOM_ROOT"
+  found=0
+  for dir in "$CUSTOM_ROOT"/*; do
+    [[ -d "$dir" ]] || continue
+    [[ -d "$dir/.git" ]] || continue
+    found=1
+    name="$(basename "$dir")"
+    repo="$(git -C "$dir" remote get-url origin)"
+    if commit="$(git -C "$dir" rev-parse --verify HEAD 2>/dev/null)"; then
+      :
+    else
+      commit="null"
+    fi
+    requirements=""
+    if [[ -f "$dir/requirements.txt" ]]; then
+      requirements="requirements.txt"
+    fi
+    echo "- name: $name"
+    echo "  repo: $repo"
+    echo "  commit: $commit"
+    echo "  path: $name"
+    if [[ -n "$requirements" ]]; then
+      echo "  requirements: $requirements"
+    else
+      echo "  requirements: null"
+    fi
+    echo "  install: []"
+  done
+  if [[ "$found" -eq 0 ]]; then
+    echo "[]"
+  fi
+} >"$OUTPUT_FILE"
+
+echo "Wrote $OUTPUT_FILE"

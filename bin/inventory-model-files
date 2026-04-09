@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+COMFYUI_ROOT="${COMFYUI_ROOT:-/workspace/ComfyUI}"
+MODELS_ROOT="${MODELS_ROOT:-$COMFYUI_ROOT/models}"
+OUTPUT_FILE="${OUTPUT_FILE:-$(pwd)/config/models.inventory.txt}"
+
+if [[ ! -d "$MODELS_ROOT" ]]; then
+  echo "Models directory not found: $MODELS_ROOT" >&2
+  exit 1
+fi
+
+mkdir -p "$(dirname "$OUTPUT_FILE")"
+{
+  echo "# Generated from $MODELS_ROOT"
+  find "$MODELS_ROOT" -type f | sort | while read -r file; do
+    size="$(du -h "$file" | awk '{print $1}')"
+    rel="${file#"$COMFYUI_ROOT"/}"
+    echo "$size  $rel"
+  done
+} >"$OUTPUT_FILE"
+
+echo "Wrote $OUTPUT_FILE"

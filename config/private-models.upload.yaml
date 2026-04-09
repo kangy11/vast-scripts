@@ -1,0 +1,62 @@
+# Candidate private uploads extracted from the live Vast instance.
+# Adjust repo_name if you want a different Hugging Face repository name.
+
+- name: photonicfusion-chroma-v10
+  local_path: models/diffusion_models/photonicFusionChroma_v10_diffusion_learned_fp8mixed_tensor_distill_large.safetensors
+  path_in_repo: models/diffusion_models/photonicFusionChroma_v10_diffusion_learned_fp8mixed_tensor_distill_large.safetensors
+  lock_target_dir: .
+  private: true
+
+- name: t5xxl-the-photo-x10a
+  local_path: models/embeddings/t5xxl_the_photo_x10a.safetensors
+  path_in_repo: models/embeddings/t5xxl_the_photo_x10a.safetensors
+  lock_target_dir: .
+  private: true
+
+- name: t5xxl-the-photo-x10w
+  local_path: models/embeddings/t5xxl_the_photo_x10w.safetensors
+  path_in_repo: models/embeddings/t5xxl_the_photo_x10w.safetensors
+  lock_target_dir: .
+  private: true
+
+- name: chroma1-flash-r24
+  local_path: models/loras/Chroma1-Flash_r24-fp32.safetensors
+  path_in_repo: models/loras/Chroma1-Flash_r24-fp32.safetensors
+  lock_target_dir: .
+  private: true
+
+- name: chroma-flash-heun-r01
+  local_path: models/loras/chroma-flash-heun_r01-fp32-pruned.safetensors
+  path_in_repo: models/loras/chroma-flash-heun_r01-fp32-pruned.safetensors
+  lock_target_dir: .
+  private: true
+
+- name: chroma-flash-heun-r256
+  local_path: models/loras/chroma-flash-heun_r256-fp32-pruned.safetensors
+  path_in_repo: models/loras/chroma-flash-heun_r256-fp32-pruned.safetensors
+  lock_target_dir: .
+  private: true
+
+- name: chroma-flash-heun-r96
+  local_path: models/loras/chroma-flash-heun_r96-fp32.safetensors
+  path_in_repo: models/loras/chroma-flash-heun_r96-fp32.safetensors
+  lock_target_dir: .
+  private: true
+
+- name: realpose-v1-photo-facerefine-v2-r64
+  local_path: models/loras/realpose_v1_photo-facerefine-v2-r64.safetensors
+  path_in_repo: models/loras/realpose_v1_photo-facerefine-v2-r64.safetensors
+  lock_target_dir: .
+  private: true
+
+- name: realpose-v1-photo
+  local_path: models/loras/realpose_v1_photo.safetensors
+  path_in_repo: models/loras/realpose_v1_photo.safetensors
+  lock_target_dir: .
+  private: true
+
+- name: nomos8k-span-otf-medium
+  local_path: models/upscale_models/4xNomos8k_span_otf_medium.pth
+  path_in_repo: models/upscale_models/4xNomos8k_span_otf_medium.pth
+  lock_target_dir: .
+  private: true
