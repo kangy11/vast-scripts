@@ -346,6 +346,9 @@ def sanitize_rc_file(path: Path) -> None:
 
 
 def ensure_comfyui_repo(env_info: dict[str, Any]) -> None:
+    if env_info.get("safe_rerun_mode"):
+        log("Safe rerun mode: skipping ComfyUI repo/dependency mutations while official service is live")
+        return
     target = env_info["comfyui_root"]
     repo_url = os.environ.get("COMFYUI_REPO", "https://github.com/comfyanonymous/ComfyUI.git")
     repo_ref = os.environ.get("COMFYUI_REF", "").strip()
@@ -422,6 +425,9 @@ def install_shell(env_info: dict[str, Any]) -> None:
 
 
 def install_custom_nodes(env_info: dict[str, Any]) -> None:
+    if env_info.get("safe_rerun_mode"):
+        log("Safe rerun mode: skipping custom node code/dependency mutations while official service is live")
+        return
     nodes = load_yaml(env_info["config_dir"] / "custom-nodes.lock.yaml")
     custom_root = env_info["comfyui_root"] / "custom_nodes"
     ensure_dirs([custom_root])
@@ -610,6 +616,8 @@ def attach_tmux() -> None:
 
 def bootstrap_all(repo_root: Path) -> None:
     env_info = bootstrap_env(repo_root)
+    state_file = env_info["state_dir"] / "bootstrap.complete"
+    target_port = comfy_target_port(env_info)
     ensure_dirs(
         [
             env_info["workspace_root"],
@@ -620,6 +628,18 @@ def bootstrap_all(repo_root: Path) -> None:
             env_info["state_dir"],
         ]
     )
+    safe_rerun_mode = (
+        env_info["official_image"]
+        and state_file.exists()
+        and tcp_port_open(target_port)
+        and os.environ.get("ALLOW_LIVE_RUNTIME_MUTATIONS", "0") != "1"
+    )
+    env_info["safe_rerun_mode"] = safe_rerun_mode
+    if safe_rerun_mode:
+        log(
+            "Safe rerun mode enabled: official ComfyUI is already live, so bootstrap will avoid mutating "
+            "the running Python/code environment"
+        )
     prepare_portal_env(env_info)
     prepare_hf_auth()
     persist_official_env(env_info)
@@ -633,7 +653,6 @@ def bootstrap_all(repo_root: Path) -> None:
     restore_comfy_config(env_info)
     auto_start_comfy = os.environ.get("AUTO_START_COMFYUI")
     should_start = False
-    target_port = comfy_target_port(env_info)
     if env_info["official_image"]:
         if tcp_port_open(target_port):
             log(f"Official ComfyUI port {target_port} is already reachable; skipping bootstrap start")
@@ -655,7 +674,7 @@ def bootstrap_all(repo_root: Path) -> None:
             log("Skipping automatic ComfyUI start because the official Vast path is disabled or already healthy")
         else:
             log("Skipping automatic ComfyUI start because AUTO_START_COMFYUI is not enabled")
-    (env_info["state_dir"] / "bootstrap.complete").write_text("ok\n", encoding="utf-8")
+    state_file.write_text("ok\n", encoding="utf-8")
     log("Bootstrap completed successfully")
 
 
