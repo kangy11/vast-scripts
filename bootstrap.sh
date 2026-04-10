@@ -5,9 +5,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export BOOTSTRAP_ROOT="${BOOTSTRAP_ROOT:-$SCRIPT_DIR}"
 export WORKSPACE_ROOT="${WORKSPACE_ROOT:-/workspace}"
 export COMFYUI_ROOT="${COMFYUI_ROOT:-$WORKSPACE_ROOT/ComfyUI}"
-DEFAULT_HF_HOME="${HOME:-/root}/.cache/huggingface"
-export HF_HOME="${HF_HOME:-$DEFAULT_HF_HOME}"
-export HF_HUB_CACHE="${HF_HUB_CACHE:-$HF_HOME/hub}"
 export LOG_DIR="${LOG_DIR:-$WORKSPACE_ROOT/logs}"
 export BOOTSTRAP_LOG_FILE="${BOOTSTRAP_LOG_FILE:-$BOOTSTRAP_ROOT/bootstrap.log}"
 export BOOTSTRAP_VENV="${BOOTSTRAP_VENV:-$BOOTSTRAP_ROOT/.bootstrap-venv}"
@@ -19,7 +16,7 @@ if [[ -n "$RESOLVED_HF_TOKEN" ]]; then
   export HUGGINGFACEHUB_API_TOKEN="$RESOLVED_HF_TOKEN"
 fi
 
-mkdir -p "$BOOTSTRAP_ROOT" "$HF_HOME" "$HF_HUB_CACHE" "$LOG_DIR"
+mkdir -p "$BOOTSTRAP_ROOT" "$LOG_DIR"
 
 exec > >(tee -a "$BOOTSTRAP_LOG_FILE") 2>&1
 

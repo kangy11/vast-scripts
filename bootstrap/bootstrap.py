@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from huggingface_hub import login, snapshot_download
+from huggingface_hub import get_token, login, snapshot_download
 
 
 ROOT_USER = os.environ.get("BOOTSTRAP_USER", "root")
@@ -176,7 +176,8 @@ def resolve_hf_token() -> str:
         value = os.environ.get(name, "").strip()
         if value:
             return value
-    return ""
+    saved_token = get_token() or ""
+    return saved_token.strip()
 
 
 def shell_quote(value: str) -> str:
@@ -186,6 +187,7 @@ def shell_quote(value: str) -> str:
 def prepare_hf_auth() -> str:
     token = resolve_hf_token()
     if not token:
+        log("No Hugging Face token detected from env vars or default login state")
         return ""
     for name in HF_TOKEN_ENV_NAMES:
         os.environ[name] = token
@@ -465,22 +467,28 @@ def sync_models(env_info: dict[str, Any]) -> None:
     for model in models:
         if model.get("private") and not hf_token:
             raise RuntimeError(
-                f"Model {model['name']} is marked private but no Hugging Face token was found"
+                f"Model {model['name']} is marked private but no Hugging Face token was found "
+                "from environment variables or the default Hugging Face login state"
             )
         target_dir = Path(model["target_dir"])
         if not target_dir.is_absolute():
             target_dir = env_info["comfyui_root"] / target_dir
         ensure_dirs([target_dir])
         log(f"Syncing model {model['name']} into {target_dir}")
-        snapshot_download(
-            repo_id=model["repo_id"],
-            revision=model["revision"],
-            local_dir=str(target_dir),
-            allow_patterns=model.get("include") or None,
-            ignore_patterns=model.get("exclude") or None,
-            token=hf_token or None,
-            resume_download=True,
-        )
+        try:
+            snapshot_download(
+                repo_id=model["repo_id"],
+                revision=model["revision"],
+                local_dir=str(target_dir),
+                allow_patterns=model.get("include") or None,
+                ignore_patterns=model.get("exclude") or None,
+                token=hf_token or None,
+                resume_download=True,
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                f"Failed to sync model {model['name']} from {model['repo_id']}: {exc}"
+            ) from exc
 
 
 def restore_comfy_config(env_info: dict[str, Any]) -> None:
