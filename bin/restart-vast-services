@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+OFFICIAL_COMFY_SUPERVISOR="/opt/supervisor-scripts/comfyui.sh"
+SUPERVISORD_CONF="/etc/supervisor/supervisord.conf"
+SUPERVISOR_PID_FILE="/var/run/supervisord.pid"
+SUPERVISOR_SOCK="/var/run/supervisor.sock"
+SERVICES=(
+  comfyui
+  instance_portal
+  caddy
+  tunnel_manager
+  api-wrapper
+)
+
+if [[ ! -e "$OFFICIAL_COMFY_SUPERVISOR" ]]; then
+  echo "Official Vast ComfyUI image not detected; this helper is intended for the official supervisor-managed stack." >&2
+  exit 1
+fi
+
+if [[ "$(id -u)" -ne 0 ]]; then
+  echo "Please run this command as root." >&2
+  exit 1
+fi
+
+if [[ -f "$SUPERVISOR_PID_FILE" ]]; then
+  pid="$(cat "$SUPERVISOR_PID_FILE" 2>/dev/null || true)"
+  if [[ -n "$pid" ]] && ! kill -0 "$pid" 2>/dev/null; then
+    rm -f "$SUPERVISOR_PID_FILE" "$SUPERVISOR_SOCK"
+  fi
+fi
+
+if ! supervisorctl status >/dev/null 2>&1; then
+  supervisord -c "$SUPERVISORD_CONF"
+  sleep 3
+fi
+
+for service in "${SERVICES[@]}"; do
+  if supervisorctl status "$service" >/dev/null 2>&1; then
+    supervisorctl restart "$service"
+  fi
+done
+
+sleep 5
+
+echo
+echo "Supervisor status:"
+supervisorctl status || true
+
+echo
+echo "Relevant listeners:"
+ss -ltnp | grep -E '1111|11111|8188|18188|8288|18288|8384|18384|22' || true
