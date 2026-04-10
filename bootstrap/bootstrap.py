@@ -167,6 +167,10 @@ def default_portal_config() -> str:
     )
 
 
+def default_hf_home() -> Path:
+    return Path.home() / ".cache" / "huggingface"
+
+
 def resolve_hf_token() -> str:
     for name in HF_TOKEN_ENV_NAMES:
         value = os.environ.get(name, "").strip()
@@ -257,7 +261,7 @@ def bootstrap_env(repo_root: Path) -> dict[str, Any]:
     workspace_root = getenv_path("WORKSPACE_ROOT", "/workspace")
     bootstrap_root = getenv_path("BOOTSTRAP_ROOT", str(repo_root))
     comfyui_root = getenv_path("COMFYUI_ROOT", str(workspace_root / "ComfyUI"))
-    hf_home = getenv_path("HF_HOME", str(workspace_root / ".cache" / "huggingface"))
+    hf_home = getenv_path("HF_HOME", str(default_hf_home()))
     hf_hub_cache = getenv_path("HF_HUB_CACHE", str(hf_home / "hub"))
     log_dir = getenv_path("LOG_DIR", str(workspace_root / "logs"))
     comfy_log_default = OFFICIAL_COMFY_LOG if OFFICIAL_COMFY_LOG.exists() else log_dir / "comfyui.log"
@@ -297,17 +301,22 @@ def resolve_runtime_python() -> str:
 
 def profile_exports(env_info: dict[str, Any]) -> str:
     bootstrap_bin = env_info["bin_dir"]
-    return "\n".join(
+    lines = [
+        "export WORKSPACE_ROOT=\"%s\"" % env_info["workspace_root"],
+        "export BOOTSTRAP_ROOT=\"%s\"" % env_info["bootstrap_root"],
+        "export COMFYUI_ROOT=\"%s\"" % env_info["comfyui_root"],
+    ]
+    if "HF_HOME" in os.environ:
+        lines.append("export HF_HOME=\"%s\"" % env_info["hf_home"])
+    if "HF_HUB_CACHE" in os.environ:
+        lines.append("export HF_HUB_CACHE=\"%s\"" % env_info["hf_hub_cache"])
+    lines.extend(
         [
-            "export WORKSPACE_ROOT=\"%s\"" % env_info["workspace_root"],
-            "export BOOTSTRAP_ROOT=\"%s\"" % env_info["bootstrap_root"],
-            "export COMFYUI_ROOT=\"%s\"" % env_info["comfyui_root"],
-            "export HF_HOME=\"%s\"" % env_info["hf_home"],
-            "export HF_HUB_CACHE=\"%s\"" % env_info["hf_hub_cache"],
             "export PATH=\"%s:$PATH\"" % bootstrap_bin,
             "",
         ]
     )
+    return "\n".join(lines)
 
 
 def persist_profile_env(env_info: dict[str, Any]) -> None:
