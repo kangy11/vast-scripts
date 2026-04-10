@@ -33,11 +33,10 @@ echo "Detected Vast external URLs"
 echo
 
 if [[ -n "$PORTAL_PORT" ]]; then
+  echo "Management page:"
   if [[ -n "$OPEN_TOKEN" ]]; then
-    echo "Management page:"
     echo "  http://$PUBLIC_IP:$PORTAL_PORT/?token=$OPEN_TOKEN"
   else
-    echo "Management page:"
     echo "  http://$PUBLIC_IP:$PORTAL_PORT/"
   fi
   echo
@@ -45,19 +44,31 @@ fi
 
 if [[ -n "$COMFY_PORT" ]]; then
   echo "ComfyUI:"
-  echo "  http://$PUBLIC_IP:$COMFY_PORT"
+  if [[ -n "$OPEN_TOKEN" ]]; then
+    echo "  http://$PUBLIC_IP:$COMFY_PORT/?token=$OPEN_TOKEN"
+  else
+    echo "  http://$PUBLIC_IP:$COMFY_PORT"
+  fi
   echo
 fi
 
 if [[ -n "$API_PORT" ]]; then
   echo "API wrapper:"
-  echo "  http://$PUBLIC_IP:$API_PORT/docs"
+  if [[ -n "$OPEN_TOKEN" ]]; then
+    echo "  http://$PUBLIC_IP:$API_PORT/docs?token=$OPEN_TOKEN"
+  else
+    echo "  http://$PUBLIC_IP:$API_PORT/docs"
+  fi
   echo
 fi
 
 if [[ -n "$SYNCTHING_PORT" ]]; then
   echo "Syncthing:"
-  echo "  http://$PUBLIC_IP:$SYNCTHING_PORT"
+  if [[ -n "$OPEN_TOKEN" ]]; then
+    echo "  http://$PUBLIC_IP:$SYNCTHING_PORT/?token=$OPEN_TOKEN"
+  else
+    echo "  http://$PUBLIC_IP:$SYNCTHING_PORT"
+  fi
   echo
 fi
 
