@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+WORKSPACE_ROOT="${WORKSPACE_ROOT:-/workspace}"
+ENV_FILE="$WORKSPACE_ROOT/.env"
+
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  set +a
+fi
+
+PUBLIC_IP="${PUBLIC_IPADDR:-}"
+if [[ -z "$PUBLIC_IP" ]]; then
+  PUBLIC_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+fi
+
+PORTAL_PORT="${VAST_TCP_PORT_1111:-}"
+COMFY_PORT="${VAST_TCP_PORT_8188:-}"
+API_PORT="${VAST_TCP_PORT_8288:-}"
+SYNCTHING_PORT="${VAST_TCP_PORT_8384:-}"
+OPEN_TOKEN="${OPEN_BUTTON_TOKEN:-}"
+WEB_USER="${WEB_USERNAME:-vastai}"
+WEB_PASSWORD_VALUE="${WEB_PASSWORD:-}"
+
+if [[ -z "$PUBLIC_IP" ]]; then
+  echo "Could not determine PUBLIC_IPADDR. Check /workspace/.env or the Vast instance env." >&2
+  exit 1
+fi
+
+echo "Detected Vast external URLs"
+echo
+
+if [[ -n "$PORTAL_PORT" ]]; then
+  if [[ -n "$OPEN_TOKEN" ]]; then
+    echo "Management page:"
+    echo "  http://$PUBLIC_IP:$PORTAL_PORT/?token=$OPEN_TOKEN"
+  else
+    echo "Management page:"
+    echo "  http://$PUBLIC_IP:$PORTAL_PORT/"
+  fi
+  echo
+fi
+
+if [[ -n "$COMFY_PORT" ]]; then
+  echo "ComfyUI:"
+  echo "  http://$PUBLIC_IP:$COMFY_PORT"
+  echo
+fi
+
+if [[ -n "$API_PORT" ]]; then
+  echo "API wrapper:"
+  echo "  http://$PUBLIC_IP:$API_PORT/docs"
+  echo
+fi
+
+if [[ -n "$SYNCTHING_PORT" ]]; then
+  echo "Syncthing:"
+  echo "  http://$PUBLIC_IP:$SYNCTHING_PORT"
+  echo
+fi
+
+echo "Web auth:"
+echo "  username: $WEB_USER"
+if [[ -n "$WEB_PASSWORD_VALUE" ]]; then
+  echo "  password: $WEB_PASSWORD_VALUE"
+elif [[ -n "$OPEN_TOKEN" ]]; then
+  echo "  password/token: $OPEN_TOKEN"
+else
+  echo "  password/token: not set in /workspace/.env"
+fi

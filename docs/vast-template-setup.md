@@ -57,6 +57,12 @@ For the official Vast ComfyUI image, watch:
 ```bash
 tail -f /workspace/bootstrap/bootstrap.log
 tail -f /var/log/portal/comfyui.log
+
+To print the current external management-page and ComfyUI URLs for the instance, run:
+
+```bash
+show-vast-urls
+```
 ```
 
 ## Packing small ComfyUI config

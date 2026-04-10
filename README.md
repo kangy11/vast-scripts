@@ -12,7 +12,7 @@ This repository turns a Vast.ai ComfyUI SSH instance into a reproducible setup t
 - Restores small ComfyUI user config from a local archive or include list
 - Sets the default shell to `zsh` with `oh-my-zsh`
 - Installs `tmux` but never auto-starts or auto-attaches to it
-- Exposes helper commands: `start-comfy`, `logs-comfy`, `attach-comfy`, `bootstrap-rerun`, `restart-vast-services`
+- Exposes helper commands: `start-comfy`, `logs-comfy`, `attach-comfy`, `bootstrap-rerun`, `restart-vast-services`, `show-vast-urls`
 - Detects the official Vast ComfyUI image and avoids auto-starting a second ComfyUI process on top of the built-in supervisor
 - Keeps the official Vast portal and official ComfyUI stack as the default path; manual fallback is opt-in
 
@@ -70,3 +70,4 @@ This repository turns a Vast.ai ComfyUI SSH instance into a reproducible setup t
 - `config/comfyui-config.tar.zst` is intentionally not committed here because it is user-specific. Generate it from your live ComfyUI install with `bin/package-comfy-config`.
 - This repository is safe to rerun. Existing matching clones and model downloads are reused.
 - If the official Vast portal or ComfyUI stack stops responding, run `restart-vast-services` as `root` to rebuild the supervisor socket if needed and restart the official web services.
+- To see the current external management page and ComfyUI URLs for an instance, run `show-vast-urls`.
