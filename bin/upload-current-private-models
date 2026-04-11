@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+exec "$REPO_ROOT/bin/upload-private-models-to-hf" \
+  --config "$REPO_ROOT/config/private-models.upload.yaml" \
+  --write-lock "$REPO_ROOT/config/private-models.generated.lock.yaml" \
+  "$@"

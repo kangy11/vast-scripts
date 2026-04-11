@@ -467,10 +467,12 @@ def install_custom_nodes(env_info: dict[str, Any]) -> None:
             raise
 
 
-def sync_models(env_info: dict[str, Any]) -> None:
+def sync_models(env_info: dict[str, Any], *, private_only: bool = False) -> None:
     hf_token = resolve_hf_token()
     models = load_yaml(env_info["config_dir"] / "models.lock.yaml")
     for model in models:
+        if private_only and not model.get("private"):
+            continue
         if model.get("private") and not hf_token:
             raise RuntimeError(
                 f"Model {model['name']} is marked private but no Hugging Face token was found "
@@ -696,6 +698,7 @@ def main() -> None:
     subparsers.add_parser("install-shell")
     subparsers.add_parser("install-nodes")
     subparsers.add_parser("sync-models")
+    subparsers.add_parser("sync-private-models")
     subparsers.add_parser("restore-config")
 
     args = parser.parse_args()
@@ -716,6 +719,8 @@ def main() -> None:
         install_custom_nodes(env_info)
     elif args.command == "sync-models":
         sync_models(env_info)
+    elif args.command == "sync-private-models":
+        sync_models(env_info, private_only=True)
     elif args.command == "restore-config":
         restore_comfy_config(env_info)
     else:

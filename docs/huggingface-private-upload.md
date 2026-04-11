@@ -38,15 +38,25 @@ This writes `config/private-models.generated.lock.yaml`.
 On the Vast machine:
 
 ```bash
-python3 -m pip install -U "huggingface_hub[cli]" PyYAML
 HF_NAMESPACE=your-name \
 HF_PRIVATE_REPO=comfyui-private-models \
 HF_TOKEN=hf_xxx \
 COMFYUI_ROOT=/workspace/ComfyUI \
-./bin/upload-private-models-to-hf
+./bin/upload-current-private-models
 ```
 
 After upload, you do not need to keep merging individual private files into [`config/models.lock.yaml`](/Users/yongkang/Documents/Gemma4/config/models.lock.yaml) if you keep the single whole-repo sync entry for `wykang/comfyui-private-models`.
+
+## Pull only the private repo
+
+On the Vast machine:
+
+```bash
+cd /workspace/bootstrap
+sync-private-models
+```
+
+That pulls only the private Hugging Face repo entries from [`config/models.lock.yaml`](/Users/yongkang/Documents/Gemma4/config/models.lock.yaml) and leaves the public model sync alone.
 
 ## Repo layout
 
