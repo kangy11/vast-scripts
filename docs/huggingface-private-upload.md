@@ -46,7 +46,7 @@ COMFYUI_ROOT=/workspace/ComfyUI \
 ./bin/upload-private-models-to-hf
 ```
 
-After upload, merge `config/private-models.generated.lock.yaml` into [`config/models.lock.yaml`](/Users/yongkang/Documents/Gemma4/config/models.lock.yaml).
+After upload, you do not need to keep merging individual private files into [`config/models.lock.yaml`](/Users/yongkang/Documents/Gemma4/config/models.lock.yaml) if you keep the single whole-repo sync entry for `wykang/comfyui-private-models`.
 
 ## Repo layout
 
@@ -56,4 +56,4 @@ The uploader now pushes everything into one private model repo and preserves the
 - `models/loras/...`
 - `models/embeddings/...`
 
-Bootstrap can then download directly into `COMFYUI_ROOT` using targeted `include` paths.
+Bootstrap can then download the whole private repo directly into `COMFYUI_ROOT`, so newly uploaded private models appear automatically on the next sync without editing the lock file.
