@@ -13,7 +13,23 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from huggingface_hub import get_token, login, snapshot_download
+from huggingface_hub import login, snapshot_download
+
+try:
+    from huggingface_hub import get_token as hf_get_token
+except ImportError:
+    try:
+        from huggingface_hub.utils import get_token as hf_get_token
+    except ImportError:
+        try:
+            from huggingface_hub.hf_api import HfFolder
+        except ImportError:
+            HfFolder = None
+
+        def hf_get_token() -> str | None:
+            if HfFolder is None:
+                return None
+            return HfFolder.get_token()
 
 
 ROOT_USER = os.environ.get("BOOTSTRAP_USER", "root")
@@ -60,6 +76,13 @@ def repo_root_from_arg(value: str | None) -> Path:
 
 def getenv_path(name: str, default: str) -> Path:
     return Path(os.environ.get(name, default)).expanduser().resolve()
+
+
+def env_enabled(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() not in {"0", "false", "no", "off"}
 
 
 def log(message: str) -> None:
@@ -176,7 +199,7 @@ def resolve_hf_token() -> str:
         value = os.environ.get(name, "").strip()
         if value:
             return value
-    saved_token = get_token() or ""
+    saved_token = hf_get_token() or ""
     return saved_token.strip()
 
 
@@ -620,6 +643,7 @@ def bootstrap_all(repo_root: Path) -> None:
     env_info = bootstrap_env(repo_root)
     state_file = env_info["state_dir"] / "bootstrap.complete"
     target_port = comfy_target_port(env_info)
+    sync_models_on_boot = env_enabled("SYNC_MODELS_ON_BOOT", default=True)
     ensure_dirs(
         [
             env_info["workspace_root"],
@@ -651,7 +675,10 @@ def bootstrap_all(repo_root: Path) -> None:
     ensure_comfyui_repo(env_info)
     ensure_supervisord(env_info)
     install_custom_nodes(env_info)
-    sync_models(env_info)
+    if sync_models_on_boot:
+        sync_models(env_info)
+    else:
+        log("Skipping Hugging Face model sync because SYNC_MODELS_ON_BOOT is disabled")
     restore_comfy_config(env_info)
     auto_start_comfy = os.environ.get("AUTO_START_COMFYUI")
     should_start = False

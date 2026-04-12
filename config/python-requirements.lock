@@ -1,2 +1,2 @@
-huggingface_hub[cli]==1.0.0rc7
+huggingface_hub==1.0.0rc7
 PyYAML==6.0.2

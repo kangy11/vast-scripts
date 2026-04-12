@@ -12,7 +12,7 @@ This repository turns a Vast.ai ComfyUI SSH instance into a reproducible setup t
 - Restores small ComfyUI user config from a local archive or include list
 - Sets the default shell to `zsh` with `oh-my-zsh`
 - Installs `tmux` but never auto-starts or auto-attaches to it
-- Exposes helper commands: `start-comfy`, `logs-comfy`, `attach-comfy`, `bootstrap-rerun`, `restart-vast-services`, `show-vast-urls`, `sync-private-models`, `upload-current-private-models`
+- Exposes helper commands: `start-comfy`, `logs-comfy`, `attach-comfy`, `bootstrap-rerun`, `bootstrap-rerun-no-models`, `restart-vast-services`, `show-vast-urls`, `sync-models`, `sync-private-models`, `upload-current-private-models`
 - Detects the official Vast ComfyUI image and avoids auto-starting a second ComfyUI process on top of the built-in supervisor
 - Keeps the official Vast portal and official ComfyUI stack as the default path; manual fallback is opt-in
 
@@ -54,6 +54,7 @@ This repository turns a Vast.ai ComfyUI SSH instance into a reproducible setup t
 - `COMFYUI_REPO`: defaults to `https://github.com/comfyanonymous/ComfyUI.git`
 - `COMFYUI_REF`: optional git ref for ComfyUI itself
 - `HF_TOKEN`: optional but required for private Hugging Face repositories
+- `SYNC_MODELS_ON_BOOT`: defaults to `1`; set it to `0` if you want bootstrap to skip all Hugging Face model downloads during migration
 - `COMFYUI_PORT`: defaults to `18188` on official Vast images and `8188` elsewhere
 - `COMFYUI_ARGS`: extra arguments passed to `python main.py`
 - `AUTO_START_COMFYUI`: defaults to `0` on official Vast images and `1` elsewhere
@@ -69,6 +70,7 @@ This repository turns a Vast.ai ComfyUI SSH instance into a reproducible setup t
 - The Vast `on-start` script should launch bootstrap in the background so the official portal and open buttons can come up immediately.
 - `config/comfyui-config.tar.zst` is intentionally not committed here because it is user-specific. Generate it from your live ComfyUI install with `bin/package-comfy-config`.
 - This repository is safe to rerun. Existing matching clones and model downloads are reused.
+- If you want a lighter migration pass that restores code, nodes, and config but leaves model downloads for later, set `SYNC_MODELS_ON_BOOT=0` and run `sync-models` manually when you are ready.
 - If the official Vast portal or ComfyUI stack stops responding, run `restart-vast-services` as `root` to rebuild the supervisor socket if needed and restart the official web services.
 - To see the current external management page and ComfyUI URLs for an instance, run `show-vast-urls`.
 - To sync only your private Hugging Face model repo into the current ComfyUI workspace, run `sync-private-models`.

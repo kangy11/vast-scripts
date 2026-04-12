@@ -18,7 +18,11 @@ This script should return quickly and let bootstrap continue in the background. 
 
 ## Suggested env vars
 
-Use [`templates/vast-template.env.example`](/Users/yongkang/Documents/Gemma4/templates/vast-template.env.example) as the base set.
+Use one of these env templates:
+
+- Download models during bootstrap: [`templates/vast-template.download-models.env.example`](/Users/yongkang/Documents/Gemma4/templates/vast-template.download-models.env.example)
+- Skip model downloads during bootstrap: [`templates/vast-template.no-model-download.env.example`](/Users/yongkang/Documents/Gemma4/templates/vast-template.no-model-download.env.example)
+- Common reference copy: [`templates/vast-template.env.example`](/Users/yongkang/Documents/Gemma4/templates/vast-template.env.example)
 
 For the official Vast ComfyUI image, keep:
 
@@ -28,6 +32,26 @@ OFFICIAL_COMFYUI_FALLBACK=0
 COMFYUI_PORT=18188
 COMFYUI_LOG_FILE=/var/log/portal/comfyui.log
 ```
+
+The difference between the two migration variants is one flag:
+
+```bash
+SYNC_MODELS_ON_BOOT=1
+```
+
+or:
+
+```bash
+SYNC_MODELS_ON_BOOT=0
+```
+
+When `SYNC_MODELS_ON_BOOT=0`, bootstrap still restores ComfyUI, custom nodes, shell config, and user config, but it skips every Hugging Face model download. You can later run:
+
+```bash
+sync-models
+```
+
+to pull the pinned model set manually.
 
 That keeps the official Vast ComfyUI and official management page as the primary path. Bootstrap restores nodes, models, shell config, and user config, but does not spin up a second ComfyUI unless you explicitly choose to use the manual fallback.
 
