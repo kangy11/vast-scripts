@@ -12,6 +12,67 @@ SERVICES=(
   tunnel_manager
   api-wrapper
 )
+PORT_REGEX='1111|11111|8188|18188|8288|18288|8384|18384'
+SUPERVISORD_ERR_LOG="$(mktemp /tmp/restart-vast-services.XXXXXX.log)"
+
+cleanup_supervisor_state() {
+  if [[ -f "$SUPERVISOR_PID_FILE" ]]; then
+    pid="$(cat "$SUPERVISOR_PID_FILE" 2>/dev/null || true)"
+    if [[ -n "$pid" ]] && ! kill -0 "$pid" 2>/dev/null; then
+      rm -f "$SUPERVISOR_PID_FILE" "$SUPERVISOR_SOCK"
+    fi
+  fi
+}
+
+stop_portal_processes() {
+  local patterns=(
+    "supervisord"
+    "caddy"
+    "instance_portal"
+    "tunnel_manager"
+    "api-wrapper"
+    "python.*main.py.*18188"
+    "python.*main.py.*8188"
+  )
+
+  for pattern in "${patterns[@]}"; do
+    pkill -f "$pattern" 2>/dev/null || true
+  done
+
+  sleep 2
+  rm -f "$SUPERVISOR_PID_FILE" "$SUPERVISOR_SOCK"
+}
+
+start_supervisord() {
+  cleanup_supervisor_state
+
+  if supervisorctl status >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if pgrep -x supervisord >/dev/null 2>&1; then
+    pkill -x supervisord 2>/dev/null || true
+    sleep 2
+    rm -f "$SUPERVISOR_PID_FILE" "$SUPERVISOR_SOCK"
+  fi
+
+  if supervisord -c "$SUPERVISORD_CONF" 2>"$SUPERVISORD_ERR_LOG"; then
+    sleep 3
+    return 0
+  fi
+
+  if grep -q "Another program is already listening on a port" "$SUPERVISORD_ERR_LOG"; then
+    echo "Found leftover Vast web processes holding official ports; stopping them and retrying supervisord."
+    stop_portal_processes
+    if supervisord -c "$SUPERVISORD_CONF" 2>"$SUPERVISORD_ERR_LOG"; then
+      sleep 3
+      return 0
+    fi
+  fi
+
+  cat "$SUPERVISORD_ERR_LOG" >&2 || true
+  return 1
+}
 
 if [[ ! -e "$OFFICIAL_COMFY_SUPERVISOR" ]]; then
   echo "Official Vast ComfyUI image not detected; this helper is intended for the official supervisor-managed stack." >&2
@@ -23,16 +84,8 @@ if [[ "$(id -u)" -ne 0 ]]; then
   exit 1
 fi
 
-if [[ -f "$SUPERVISOR_PID_FILE" ]]; then
-  pid="$(cat "$SUPERVISOR_PID_FILE" 2>/dev/null || true)"
-  if [[ -n "$pid" ]] && ! kill -0 "$pid" 2>/dev/null; then
-    rm -f "$SUPERVISOR_PID_FILE" "$SUPERVISOR_SOCK"
-  fi
-fi
-
 if ! supervisorctl status >/dev/null 2>&1; then
-  supervisord -c "$SUPERVISORD_CONF"
-  sleep 3
+  start_supervisord
 fi
 
 for service in "${SERVICES[@]}"; do
@@ -49,4 +102,4 @@ supervisorctl status || true
 
 echo
 echo "Relevant listeners:"
-ss -ltnp | grep -E '1111|11111|8188|18188|8288|18288|8384|18384|22' || true
+ss -ltnp | grep -E "$PORT_REGEX|22" || true
