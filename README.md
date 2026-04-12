@@ -72,6 +72,7 @@ This repository turns a Vast.ai ComfyUI SSH instance into a reproducible setup t
 - This repository is safe to rerun. Existing matching clones and model downloads are reused.
 - If you want a lighter migration pass that restores code, nodes, and config but leaves model downloads for later, set `SYNC_MODELS_ON_BOOT=0` and run `sync-models` manually when you are ready.
 - If the official Vast portal or ComfyUI stack stops responding, run `restart-vast-services` as `root` to rebuild the supervisor socket if needed and restart the official web services.
+- On official Vast images, bootstrap and helper scripts now recover missing `VAST_TCP_PORT_*` values from `/proc/1/environ` before rebuilding the public web routes. This helps after manual supervisor or Caddy restarts.
 - To see the current external management page and ComfyUI URLs for an instance, run `show-vast-urls`.
 - To sync only your private Hugging Face model repo into the current ComfyUI workspace, run `sync-private-models`.
 - To upload the private models listed in `config/private-models.upload.yaml` from the current ComfyUI workspace to your private Hugging Face repo, run `upload-current-private-models`.

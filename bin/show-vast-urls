@@ -3,12 +3,36 @@ set -Eeuo pipefail
 
 WORKSPACE_ROOT="${WORKSPACE_ROOT:-/workspace}"
 ENV_FILE="$WORKSPACE_ROOT/.env"
+PROC1_ENV_FILE="/proc/1/environ"
+PORTAL_ENV_NAMES=(
+  PUBLIC_IPADDR
+  WEB_USERNAME
+  WEB_PASSWORD
+  OPEN_BUTTON_TOKEN
+  VAST_TCP_PORT_1111
+  VAST_TCP_PORT_8188
+  VAST_TCP_PORT_8288
+  VAST_TCP_PORT_8384
+)
 
 if [[ -f "$ENV_FILE" ]]; then
   set -a
   # shellcheck disable=SC1090
   source "$ENV_FILE"
   set +a
+fi
+
+if [[ -r "$PROC1_ENV_FILE" ]]; then
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    key="${line%%=*}"
+    value="${line#*=}"
+    for wanted in "${PORTAL_ENV_NAMES[@]}"; do
+      if [[ "$key" == "$wanted" && -z "${!key:-}" && -n "$value" ]]; then
+        export "$key=$value"
+      fi
+    done
+  done < <(tr '\0' '\n' < "$PROC1_ENV_FILE")
 fi
 
 PUBLIC_IP="${PUBLIC_IPADDR:-}"

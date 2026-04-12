@@ -35,6 +35,7 @@ except ImportError:
 ROOT_USER = os.environ.get("BOOTSTRAP_USER", "root")
 OFFICIAL_COMFY_SUPERVISOR = Path("/opt/supervisor-scripts/comfyui.sh")
 OFFICIAL_COMFY_LOG = Path("/var/log/portal/comfyui.log")
+PROC1_ENV_PATH = Path("/proc/1/environ")
 HF_TOKEN_ENV_NAMES = (
     "HF_TOKEN",
     "HUGGING_FACE_HUB_TOKEN",
@@ -207,6 +208,44 @@ def shell_quote(value: str) -> str:
     return "'" + value.replace("'", "'\"'\"'") + "'"
 
 
+def read_proc1_env() -> dict[str, str]:
+    if not PROC1_ENV_PATH.exists():
+        return {}
+    values: dict[str, str] = {}
+    try:
+        raw = PROC1_ENV_PATH.read_bytes()
+    except OSError:
+        return values
+    for item in raw.split(b"\0"):
+        if not item or b"=" not in item:
+            continue
+        key, value = item.split(b"=", 1)
+        try:
+            values[key.decode("utf-8")] = value.decode("utf-8")
+        except UnicodeDecodeError:
+            continue
+    return values
+
+
+def recover_portal_env(env_info: dict[str, Any]) -> None:
+    if not env_info["official_image"]:
+        return
+    proc_env = read_proc1_env()
+    recovered: list[str] = []
+    for name in PORTAL_ENV_NAMES:
+        if os.environ.get(name, "").strip():
+            continue
+        value = proc_env.get(name, "").strip()
+        if value:
+            os.environ[name] = value
+            recovered.append(name)
+    if recovered:
+        log(
+            "Recovered Vast portal env from /proc/1/environ: "
+            + ", ".join(sorted(recovered))
+        )
+
+
 def prepare_hf_auth() -> str:
     token = resolve_hf_token()
     if not token:
@@ -226,6 +265,7 @@ def prepare_portal_env(env_info: dict[str, Any]) -> None:
     os.environ.setdefault("WORKSPACE", str(env_info["workspace_root"]))
     if env_info["official_image"]:
         os.environ.setdefault("PORTAL_CONFIG", default_portal_config())
+    recover_portal_env(env_info)
 
 
 def persist_official_env(env_info: dict[str, Any]) -> None:

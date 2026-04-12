@@ -5,6 +5,9 @@ OFFICIAL_COMFY_SUPERVISOR="/opt/supervisor-scripts/comfyui.sh"
 SUPERVISORD_CONF="/etc/supervisor/supervisord.conf"
 SUPERVISOR_PID_FILE="/var/run/supervisord.pid"
 SUPERVISOR_SOCK="/var/run/supervisor.sock"
+WORKSPACE_ROOT="${WORKSPACE_ROOT:-/workspace}"
+ENV_FILE="$WORKSPACE_ROOT/.env"
+PROC1_ENV_FILE="/proc/1/environ"
 SERVICES=(
   comfyui
   instance_portal
@@ -12,8 +15,100 @@ SERVICES=(
   tunnel_manager
   api-wrapper
 )
+PORTAL_ENV_NAMES=(
+  WORKSPACE
+  PORTAL_CONFIG
+  WEB_USERNAME
+  WEB_PASSWORD
+  OPEN_BUTTON_TOKEN
+  ENABLE_AUTH
+  ENABLE_HTTPS
+  AUTH_EXCLUDE
+  PUBLIC_IPADDR
+  VAST_CONTAINERLABEL
+  VAST_TCP_PORT_1111
+  VAST_TCP_PORT_8188
+  VAST_TCP_PORT_8288
+  VAST_TCP_PORT_8384
+  VAST_TCP_PORT_8080
+  COMFYUI_ARGS
+  COMFYUI_PORT
+)
 PORT_REGEX='1111|11111|8188|18188|8288|18288|8384|18384'
 SUPERVISORD_ERR_LOG="$(mktemp /tmp/restart-vast-services.XXXXXX.log)"
+
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  set +a
+fi
+
+recover_vast_env_from_proc1() {
+  [[ -r "$PROC1_ENV_FILE" ]] || return 0
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    key="${line%%=*}"
+    value="${line#*=}"
+    for wanted in "${PORTAL_ENV_NAMES[@]}"; do
+      if [[ "$key" == "$wanted" && -z "${!key:-}" && -n "$value" ]]; then
+        export "$key=$value"
+      fi
+    done
+  done < <(tr '\0' '\n' < "$PROC1_ENV_FILE")
+}
+
+persist_recovered_env() {
+  local tmp_env tmp_etc line key name
+  tmp_env="$(mktemp /tmp/vast-env.XXXXXX)"
+  if [[ -f "$ENV_FILE" ]]; then
+    while IFS= read -r line; do
+      key="${line#export }"
+      key="${key%%=*}"
+      local keep=1
+      for name in "${PORTAL_ENV_NAMES[@]}"; do
+        if [[ "$key" == "$name" ]]; then
+          keep=0
+          break
+        fi
+      done
+      if [[ $keep -eq 1 ]]; then
+        printf '%s\n' "$line" >>"$tmp_env"
+      fi
+    done < "$ENV_FILE"
+  fi
+  for name in "${PORTAL_ENV_NAMES[@]}"; do
+    if [[ -n "${!name:-}" ]]; then
+      printf 'export %s=%q\n' "$name" "${!name}" >>"$tmp_env"
+    fi
+  done
+  install -m 600 "$tmp_env" "$ENV_FILE"
+  rm -f "$tmp_env"
+
+  tmp_etc="$(mktemp /tmp/etc-environment.XXXXXX)"
+  if [[ -f /etc/environment ]]; then
+    while IFS= read -r line; do
+      key="${line%%=*}"
+      local keep=1
+      for name in "${PORTAL_ENV_NAMES[@]}"; do
+        if [[ "$key" == "$name" ]]; then
+          keep=0
+          break
+        fi
+      done
+      if [[ $keep -eq 1 ]]; then
+        printf '%s\n' "$line" >>"$tmp_etc"
+      fi
+    done < /etc/environment
+  fi
+  for name in "${PORTAL_ENV_NAMES[@]}"; do
+    if [[ -n "${!name:-}" ]]; then
+      printf '%s=%q\n' "$name" "${!name}" >>"$tmp_etc"
+    fi
+  done
+  install -m 644 "$tmp_etc" /etc/environment
+  rm -f "$tmp_etc"
+}
 
 cleanup_supervisor_state() {
   if [[ -f "$SUPERVISOR_PID_FILE" ]]; then
@@ -83,6 +178,9 @@ if [[ "$(id -u)" -ne 0 ]]; then
   echo "Please run this command as root." >&2
   exit 1
 fi
+
+recover_vast_env_from_proc1
+persist_recovered_env
 
 if ! supervisorctl status >/dev/null 2>&1; then
   start_supervisord
